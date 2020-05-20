@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 # import dataset
 
-dataset = pd.read_csv('Churn_Modelling.csv')
+dataset = pd.read_csv("C:/Users/18175/Documents/udemy/deeplearning/Volume 1 - Supervised Deep Learning/Part 1 - Artificial Neural Networks (ANN)/Section 4 - Building an ANN/Churn_Modelling.csv")
 x = dataset.iloc[:, 3:13].values
 y = dataset.iloc[:, 13].values
 
@@ -57,6 +57,7 @@ x_test = sc.transform(x_test)
 import keras
 from keras.models import Sequential
 from keras.layers import Dense
+from keras.layers import Dropout
 
 
 # initializing the ann
@@ -64,16 +65,18 @@ from keras.layers import Dense
 classifier = Sequential()
 
 
-# adding the input layer and the first hidden layer
+# adding the input layer and the first hidden layer with dropout
 
 classifier.add(Dense(output_dim = 6, init = 'uniform', activation = 'relu', input_dim = 11))
 # update to: classifier.add(Dense(activation="relu", input_dim=11, units=6, kernel_initializer="uniform"))
-
+# add dropout to reduce chances of overfitting 
+classifier.add(Dropout(rate = 0.1))
 
 # adding the second hidden layer
 
 classifier.add(Dense(output_dim = 6, init = 'uniform', activation = 'relu'))
-
+# add dropout to reduce chances of overfitting 
+classifier.add(Dropout(rate = 0.1))
 
 # adding the output layer
 
@@ -92,7 +95,7 @@ classifier.fit(x_train, y_train, batch_size = 10, epochs = 100)
 
 
 
-# PREDICTIONS AND EVALUATING THE MODEL
+# PREDICTING & EVALUATING THE MODEL
 
 # predicting the test set results
 
@@ -108,5 +111,94 @@ cm = confusion_matrix(y_test, y_pred)
 # compute accuracy
 (1505 + 213)/2000
 # the accuracy is 0.859
+
+
+# predicting a single observation with the following characteristics:
+# Geography: France
+# Credit Score: 600
+# Gender: Male
+# Age: 40 years old
+# Tenure: 3 years
+# Balance: $60000
+# Number of Products: 2
+# Does this customer have a credit card ? Yes
+# Is this customer an Active Member: Yes
+# Estimated Salary: $50000
+
+new_prediction = classifier.predict(sc.transform(np.array([[0, 0, 600, 1, 40, 3, 60000, 2, 1, 1, 50000]])))
+new_prediction = (new_prediction > 0.5)
+# the prediction is False, so this customer does not leave the bank
+
+
+
+# EVALUATING, IMPROVING, & TUNING THE ANN
+
+# evaluating the ann
+
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import cross_val_score
+from keras.models import Sequential
+from keras.layers import Dense
+# function that builds the architecture of the ann
+def build_classifier():
+    classifier = Sequential()
+    classifier.add(Dense(output_dim = 6, init = 'uniform', activation = 'relu', input_dim = 11))
+    classifier.add(Dense(output_dim = 6, init = 'uniform', activation = 'relu'))
+    classifier.add(Dense(output_dim = 1, init = 'uniform', activation = 'sigmoid'))
+    classifier.compile(optimizer = 'adam', loss = 'binary_crossentropy', metrics = ['accuracy'])
+    return classifier
+classifier = KerasClassifier(build_fn = build_classifier, batch_size = 10, epochs = 100)
+accuracies = cross_val_score(estimator = classifier, X = x_train, y = y_train, cv = 10, n_jobs = 1)
+# compute the mean and variance of the accuracies
+mean = accuracies.mean()
+variance = accuracies.std()
+
+
+# improving the ann
+
+# dropout regularization to reduce overfitting if needed
+# added dropout code to input layer and hidden layer in lines 73 & 79 above
+
+
+# tuning the ann
+
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import GridSearchCV
+from keras.models import Sequential
+from keras.layers import Dense
+# function that builds the architecture of the ann
+def build_classifier(optimizer):
+    classifier = Sequential()
+    classifier.add(Dense(output_dim = 6, init = 'uniform', activation = 'relu', input_dim = 11))
+    classifier.add(Dense(output_dim = 6, init = 'uniform', activation = 'relu'))
+    classifier.add(Dense(output_dim = 1, init = 'uniform', activation = 'sigmoid'))
+    classifier.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+    return classifier
+classifier = KerasClassifier(build_fn = build_classifier)
+# create a dictionary of hyperparameters that we want to optimize
+parameters = {'batch_size': [25, 32],
+           'epochs': [100, 500],
+           'optimizer': ['adam', 'rmsprop']}
+grid_search = GridSearchCV(estimator = classifier,
+                           param_grid = parameters,
+                           scoring = 'accuracy',
+                           cv = 10)
+grid_search = grid_search.fit(x_train, y_train)
+best_parameters = grid_search.best_params_
+best_accuracy = grid_search.best_score_
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
